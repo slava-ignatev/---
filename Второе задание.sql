@@ -2,27 +2,27 @@
 WITH 
 MonthlyAgg AS (
     SELECT 
-        CLIENT_ID,
-        PAY_DATE,
-        PAY_SUM,
-        SUM(PAY_SUM) OVER (PARTITION BY CLIENT_ID, DATE_TRUNC('month', PAY_DATE) ORDER BY PAY_DATE) AS running_total
-    FROM PAYMENTS
+        client_id,
+        pay_date,
+        pay_sum,
+        SUM(Ppay_sum) OVER (PARTITION BY client_id, DATE_TRUNC('month', pay_date) ORDER BY pay_date) AS running_total
+    FROM payments
 ),
 --Второй CTE. Считаем оконную функцию смещения, выводим предыдущий накопленный платеж в рамках клиента и месяца платежа, сортируем по дате платежа
 WithPrevTotal AS (
     SELECT 
-        CLIENT_ID,
-        PAY_DATE,
-        PAY_SUM,
+        client_id,
+        pay_date,
+        pay_sum,
         running_total,
-        LAG(running_total) OVER (PARTITION BY CLIENT_ID, DATE_TRUNC('month', PAY_DATE) ORDER BY PAY_DATE) AS prev_running_total
+        LAG(running_total) OVER (PARTITION BY client_id, DATE_TRUNC('month', pay_date) ORDER BY pay_date) AS prev_running_total
     FROM MonthlyAgg
 )
 --Основной запрос
 SELECT 
-    CLIENT_ID AS "Идентификатор клиента",
-    PAY_DATE AS "Дата платежа",
-    PAY_SUM AS "Сумма платежа",
+    client_id AS "Идентификатор клиента",
+    pay_date AS "Дата платежа",
+    pay_sum AS "Сумма платежа",
     --Создаем условие
     CASE
 	      --Если накопленная сумма меньше 400 000, выводим в коммиссию 0 
@@ -32,6 +32,6 @@ SELECT
             (CEILING((running_total - 400000) / 100000) - 
              CEILING(COALESCE(GREATEST(prev_running_total - 400000, 0), 0) / 100000)) * 2000
              )
-    END AS "COMISS"
+    END AS "comiss"
 FROM WithPrevTotal
-ORDER BY CLIENT_ID, PAY_DATE;
+ORDER BY client_id, pay_date;
